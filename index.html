@@ -447,6 +447,11 @@
     text-shadow: 0 0 30px var(--glow-r), 0 0 60px #ff3a2d22;
   }
 
+  #overlay h2.gold {
+    color: var(--amber);
+    text-shadow: 0 0 30px var(--glow-a), 0 0 60px #ffcc0022;
+  }
+
   #overlay p {
     color: var(--dim);
     font-size: 14px;
@@ -454,10 +459,7 @@
     font-family: 'Share Tech Mono', monospace;
   }
 
-  #btn-restart {
-    background: linear-gradient(135deg, #0a1e0a, #0d2a0d);
-    border: 1px solid var(--green);
-    color: var(--green);
+  #btn-restart, #btn-continue, #btn-victory {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 700;
     font-size: 15px;
@@ -469,9 +471,39 @@
     transition: all 0.15s;
   }
 
+  #btn-restart {
+    background: linear-gradient(135deg, #0a1e0a, #0d2a0d);
+    border: 1px solid var(--green);
+    color: var(--green);
+  }
+
   #btn-restart:hover {
     background: linear-gradient(135deg, #0d2e0d, #103a10);
     box-shadow: 0 0 20px var(--glow-g);
+  }
+
+  #btn-continue {
+    background: linear-gradient(135deg, #1a1000, #2a1a00);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+  }
+
+  #btn-continue:hover {
+    background: linear-gradient(135deg, #2a1800, #3a2200);
+    box-shadow: 0 0 20px var(--glow-a);
+  }
+
+  #btn-victory {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    font-size: 12px;
+    padding: 6px 20px;
+  }
+
+  #btn-victory:hover {
+    border-color: var(--green);
+    color: var(--green);
   }
 
   /* ── BOSS WARNING ── */
@@ -768,6 +800,8 @@
     <div id="overlay">
       <h2 id="overlay-title">MISSION COMPLETE</h2>
       <p id="overlay-sub">All waves repelled. Perimeter secure.</p>
+      <button id="btn-continue" style="display:none">▶ CONTINUE — 5 MORE WAVES</button>
+      <button id="btn-victory" style="display:none">✓ CLAIM VICTORY</button>
       <button id="btn-restart">RESTART MISSION</button>
     </div>
     <div id="pause-menu">
@@ -894,7 +928,7 @@ const PATH = [
 let gold, lives, wave, score;
 let towers = [], enemies = [], bullets = [], explosions = [], deathParticles = [];
 let selectedType = null, selectedTower = null;
-let waveActive = false, gameOver = false, gameWon = false;
+let waveActive = false, gameOver = false, gameWon = false, bonusMode = false;
 let tick = 0;
 let grid = [];
 let terrainMap = [];
@@ -1005,7 +1039,7 @@ function resetGame() {
   gold = 200; lives = 20; wave = 0; score = 0;
   towers = []; enemies = []; bullets = []; explosions = []; deathParticles = [];
   selectedType = null; selectedTower = null;
-  waveActive = false; gameOver = false; gameWon = false; paused = false;
+  waveActive = false; gameOver = false; gameWon = false; bonusMode = false; paused = false;
   document.getElementById('pause-menu').classList.remove('show');
   tick = 0; killFeedEntries = []; countdownTicks = COUNTDOWN_DURATION; bossWarningTicks = 0; flashTicks = 0; waveBannerTicks = 0;
   TOWER_ORDER.forEach(t => towerBuyCount[t] = 0);
@@ -1017,6 +1051,9 @@ function resetGame() {
   document.getElementById('boss-warning').style.display = 'none';
   document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('overlay').classList.remove('show');
+  document.getElementById('btn-continue').style.display = 'none';
+  document.getElementById('btn-victory').style.display = 'none';
+  document.getElementById('btn-restart').style.display = '';
   document.getElementById('btn-sell').style.display = 'none';
   document.getElementById('btn-upgrade').style.display = 'none';
   setInfoDefault();
@@ -1087,7 +1124,9 @@ function updateWaveBar() {
       ? 'Perimeter sensors armed.'
       : `+$${waveGoldBonus(wave)} secured. Next wave incoming or press Send Wave.`;
     btn.disabled = false;
-    btn.textContent = wave >= 20 ? '[ FINAL WAVE ]' : (isBossWave(wave + 1) ? '[ BOSS WAVE ]' : '[ SEND WAVE ]');
+    btn.textContent = (bonusMode && wave >= 24) ? '[ FINAL ASSAULT ]' :
+                      (!bonusMode && wave >= 20) ? '[ FINAL WAVE ]' :
+                      (isBossWave(wave + 1) ? '[ BOSS WAVE ]' : '[ SEND WAVE ]');
   }
 }
 
@@ -1276,7 +1315,7 @@ function startWave() {
 
   // Boss warning
   if (isBossWave(wave)) {
-    const bossNames = { 5: 'BOSS', 10: 'BOSS', 15: 'TITAN', 20: 'OVERLORD' };
+    const bossNames = { 5: 'BOSS', 10: 'BOSS', 15: 'TITAN', 20: 'OVERLORD', 25: 'OVERLORD ARMADA' };
     const name = bossNames[wave] || 'BOSS';
     const warn = document.getElementById('boss-warning');
     warn.textContent = `⚠ ${name} INCOMING — BRACE FOR IMPACT ⚠`;
@@ -1289,6 +1328,17 @@ function startWave() {
 
 function buildWave(w) {
   const queue = [];
+
+  // Wave 25: ALL BOSSES — pure Overlord assault
+  if (w === 25) {
+    const base = ENEMY_TYPES[6]; // OVERLORD
+    const scale = (1 + (w - 1) * 0.22) * Math.pow(1.05, w - 1);
+    for (let i = 0; i < 8; i++) {
+      queue.push({ ...base, hp: Math.round(base.hp * scale), maxHp: Math.round(base.hp * scale), speed: base.speed, spawnAt: i * 150, isBoss: true });
+    }
+    return queue;
+  }
+
   const count = 11 + w * 3;
   let hasBoss = false;
 
@@ -1314,10 +1364,17 @@ function buildWave(w) {
       if (r < 0.3) typeIdx = 4;
       else if (r < 0.6) typeIdx = 2;
       else typeIdx = 1;
-    } else {
+    } else if (w <= 20) {
       if (r < 0.4) typeIdx = 4;
       else if (r < 0.7) typeIdx = 2;
       else typeIdx = 1;
+    } else if (w <= 23) {
+      if (r < 0.35) typeIdx = 6;
+      else if (r < 0.7) typeIdx = 5;
+      else typeIdx = 4;
+    } else {
+      if (r < 0.55) typeIdx = 6;
+      else typeIdx = 5;
     }
 
     if (i === 0 && w % 5 === 0) {
@@ -1422,7 +1479,11 @@ function update() {
   // Check wave complete
   if (waveActive && spawnQueue.length === 0 && enemies.length === 0) {
     waveActive = false;
-    if (wave >= MAX_WAVES) { endGame(true); return; }
+    const maxWaves = bonusMode ? 25 : MAX_WAVES;
+    if (wave >= maxWaves) {
+      if (bonusMode) { endGame(true); } else { showContinueOffer(); }
+      return;
+    }
     countdownTicks = COUNTDOWN_DURATION;
     updateWaveBar();
   }
@@ -1682,16 +1743,40 @@ function damageEnemy(idx, dmg, tower) {
   }
 }
 
+function showContinueOffer() {
+  gameWon = true;
+  const overlay = document.getElementById('overlay');
+  const title   = document.getElementById('overlay-title');
+  const sub     = document.getElementById('overlay-sub');
+  title.textContent = 'MISSION COMPLETE';
+  title.className = '';
+  sub.textContent = `All 20 waves repelled. Score: ${score}`;
+  document.getElementById('btn-continue').style.display = '';
+  document.getElementById('btn-victory').style.display = '';
+  document.getElementById('btn-restart').style.display = 'none';
+  overlay.classList.add('show');
+  updateWaveBar();
+}
+
 function endGame(won) {
   gameOver = !won; gameWon = won;
   const overlay = document.getElementById('overlay');
   const title   = document.getElementById('overlay-title');
   const sub     = document.getElementById('overlay-sub');
+  document.getElementById('btn-continue').style.display = 'none';
+  document.getElementById('btn-victory').style.display = 'none';
+  document.getElementById('btn-restart').style.display = '';
   overlay.classList.add('show');
   if (won) {
-    title.textContent = 'MISSION COMPLETE';
-    title.className = '';
-    sub.textContent = `All ${MAX_WAVES} waves repelled. Score: ${score}`;
+    if (bonusMode) {
+      title.textContent = 'CONGRATULATIONS';
+      title.className = 'gold';
+      sub.textContent = `You conquered all 25 waves. The Zorg are defeated. Score: ${score}`;
+    } else {
+      title.textContent = 'MISSION COMPLETE';
+      title.className = '';
+      sub.textContent = `All ${MAX_WAVES} waves repelled. Score: ${score}`;
+    }
   } else {
     title.textContent = 'PERIMETER BREACHED';
     title.className = 'red';
@@ -2996,6 +3081,25 @@ document.getElementById('btn-quit-menu').addEventListener('click', () => {
 });
 
 document.getElementById('btn-restart').addEventListener('click', resetGame);
+
+document.getElementById('btn-continue').addEventListener('click', () => {
+  bonusMode = true;
+  gameWon = false;
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('btn-continue').style.display = 'none';
+  document.getElementById('btn-victory').style.display = 'none';
+  document.getElementById('btn-restart').style.display = '';
+  countdownTicks = COUNTDOWN_DURATION;
+  updateWaveBar();
+});
+
+document.getElementById('btn-victory').addEventListener('click', () => {
+  document.getElementById('btn-continue').style.display = 'none';
+  document.getElementById('btn-victory').style.display = 'none';
+  document.getElementById('btn-restart').style.display = '';
+  document.getElementById('overlay-title').textContent = 'MISSION COMPLETE';
+  document.getElementById('overlay-sub').textContent = `All 20 waves repelled. Score: ${score}`;
+});
 
 document.getElementById('btn-start').addEventListener('click', () => {
   document.getElementById('start-screen').classList.add('hidden');
