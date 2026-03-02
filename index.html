@@ -1364,18 +1364,19 @@ function spawnEnemy(def) {
 function gameLoop() {
   if (!gameOver && !gameWon && !paused) {
     update();
-    if (gameSpeed === 2) update();
+    if (gameSpeed >= 2) update();
+    if (gameSpeed >= 3) update();
   }
   draw();
   requestAnimationFrame(gameLoop);
 }
 
 function toggleSpeed() {
-  gameSpeed = gameSpeed === 1 ? 2 : 1;
+  gameSpeed = gameSpeed === 1 ? 2 : gameSpeed === 2 ? 3 : 1;
   const btn = document.getElementById('btn-speed');
-  btn.textContent = gameSpeed === 2 ? '▶▶ 2×' : '▶ 1×';
-  btn.style.color    = gameSpeed === 2 ? 'var(--amber)' : 'var(--dim)';
-  btn.style.borderColor = gameSpeed === 2 ? 'var(--amber)' : 'var(--border2)';
+  if (gameSpeed === 1) { btn.textContent = '▶ 1×';   btn.style.color = 'var(--dim)';   btn.style.borderColor = 'var(--border2)'; }
+  if (gameSpeed === 2) { btn.textContent = '▶▶ 2×';  btn.style.color = 'var(--amber)'; btn.style.borderColor = 'var(--amber)'; }
+  if (gameSpeed === 3) { btn.textContent = '▶▶▶ 3×'; btn.style.color = 'var(--red)';   btn.style.borderColor = 'var(--red)'; }
 }
 
 function update() {
