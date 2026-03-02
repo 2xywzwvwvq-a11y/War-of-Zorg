@@ -1423,17 +1423,19 @@ function gameLoop() {
     update();
     if (gameSpeed >= 2) update();
     if (gameSpeed >= 3) update();
+    if (gameSpeed >= 4) update();
   }
   draw();
   requestAnimationFrame(gameLoop);
 }
 
 function toggleSpeed() {
-  gameSpeed = gameSpeed === 1 ? 2 : gameSpeed === 2 ? 3 : 1;
+  gameSpeed = gameSpeed === 1 ? 2 : gameSpeed === 2 ? 3 : gameSpeed === 3 ? 4 : 1;
   const btn = document.getElementById('btn-speed');
-  if (gameSpeed === 1) { btn.textContent = '▶ 1×';   btn.style.color = 'var(--dim)';   btn.style.borderColor = 'var(--border2)'; }
-  if (gameSpeed === 2) { btn.textContent = '▶▶ 2×';  btn.style.color = 'var(--amber)'; btn.style.borderColor = 'var(--amber)'; }
-  if (gameSpeed === 3) { btn.textContent = '▶▶▶ 3×'; btn.style.color = 'var(--red)';   btn.style.borderColor = 'var(--red)'; }
+  if (gameSpeed === 1) { btn.textContent = '▶ 1×';    btn.style.color = 'var(--dim)';   btn.style.borderColor = 'var(--border2)'; }
+  if (gameSpeed === 2) { btn.textContent = '▶▶ 2×';   btn.style.color = 'var(--amber)'; btn.style.borderColor = 'var(--amber)'; }
+  if (gameSpeed === 3) { btn.textContent = '▶▶▶ 3×';  btn.style.color = 'var(--red)';   btn.style.borderColor = 'var(--red)'; }
+  if (gameSpeed === 4) { btn.textContent = '▶▶▶▶ 4×'; btn.style.color = 'var(--blue)';  btn.style.borderColor = 'var(--blue)'; }
 }
 
 function update() {
